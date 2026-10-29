@@ -11,8 +11,8 @@ from gtts import gTTS
 st.set_page_config(page_title="AI Tutor Agent", page_icon="🎓", layout="wide")
 logging.getLogger("pypdf").setLevel(logging.ERROR)
 
-# 2. INITIALIZE GROQ CLIENT
-API_KEY = "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"
+# ✅ SAFE (Never hardcode keys in public code):
+API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
 client = Groq(api_key=API_KEY)
 
 # 3. DIRECTORY & CACHED LOADER
