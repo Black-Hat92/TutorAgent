@@ -93,12 +93,13 @@ def ask_ai(prompt, model_name):
 def text_to_speech(text):
     try:
         clean_text = text.replace("*", "").replace("#", "")
-        tts = gTTS(text=clean_text[:400], lang='en', slow=False)
+        # Change [:350] to [:2500] so it reads the full answer!
+        tts = gTTS(text=clean_text[:2500], lang='en', slow=False)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
-        fp.seek(0)
-        return fp
-    except Exception:
+        return fp.getvalue()
+    except Exception as e:
+        print(f"Audio Error: {e}")
         return None
 
 # 4. SIDEBAR DASHBOARD
