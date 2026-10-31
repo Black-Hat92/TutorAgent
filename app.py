@@ -120,6 +120,12 @@ if st.sidebar.button("Add Subject") and new_sub:
 subjects = get_subjects()
 selected_subject = st.sidebar.selectbox("Select Subject", subjects)
 
+study_phase = st.sidebar.radio(
+    "🎯 Current Study Phase",
+    ["1. Chapter Lecture (Full Overview)", "2. Comprehensive Chapter Exam", "3. Quick Review / Q&A"],
+    index=0
+)
+
 # Load cached notes
 notes_content = load_subject_notes(selected_subject)
 notes_len = len(notes_content)
@@ -198,45 +204,33 @@ if user_input:
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
     else:
         with st.spinner("Tutor is thinking..."):
-            # Cognitive Anchoring Prompt: Notes + Real-Life Scenarios
             combined_prompt = f"""
-            You are a master personal tutor who specializes in the Feynman Technique and Scenario-Based Learning.
-            You are teaching: {selected_subject}
-
-            PRIMARY STUDY MATERIALS (GROUND TRUTH):
+            You are a master personal tutor for {selected_subject}.
+            STUDY NOTES:
             {notes_content[:15000]}
 
-            STUDENT KNOWLEDGE TRACKER:
-            Weak Spots: {memory['weak_topics']}
-            Mastered Concepts: {memory['mastered_topics']}
+            STUDENT INPUT: "{user_input}"
+            CURRENT PHASE: {study_phase}
+            WEAK SPOTS: {memory['weak_topics']}
 
-            STUDENT'S LATEST MESSAGE:
-            "{user_input}"
+            ===========================
+            BEHAVIOR RULES FOR CURRENT PHASE:
+            ===========================
 
-            =========================
-            INSTRUCTION & TEACHING RULES:
-            =========================
-            1. GROUNDED IN NOTES:
-               - Every topic you teach MUST originate from the study materials provided above.
-               - Reference exact terms, mechanisms, or principles found in the text.
+            IF PHASE IS "1. Chapter Lecture (Full Overview)":
+            - DO NOT ask quiz questions.
+            - Extract the 3 to 4 core Learning Outcomes from the chapter notes.
+            - Teach the full chapter cohesively from start to finish.
+            - Explain every major theory using a vivid, everyday REAL-LIFE SCENARIO (cooking, cars, tech, sports, business).
+            - End your response with: "We have covered all outcomes for this chapter! When you are ready to test your knowledge, switch the sidebar to '2. Comprehensive Chapter Exam'."
 
-            2. REAL-LIFE SCENARIO MANDATE:
-               - DO NOT just dump theory or read definitions like a textbook.
-               - Immediately map the academic concept to an intuitive real-world scenario (e.g., kitchen cooking, smartphone apps, highway traffic, personal finance, Netflix algorithms, human body habits, or everyday sports).
-               - Explain *why* the concept works using that scenario as a bridge.
+            IF PHASE IS "2. Comprehensive Chapter Exam":
+            - Review the chapter's learning outcomes and generate a 3-question Scenario Exam.
+            - Do not ask definition questions. Put the student inside realistic dilemmas where they must apply the concepts.
+            - If the student just submitted answers, evaluate each one, mark concepts as Mastered or Weak, and explain any errors simply.
 
-            3. EVALUATION PROTOCOL:
-               - If the student was answering a prior quiz question:
-                 * Start your reply with: "[RESULT: CORRECT - ConceptName]" or "[RESULT: INCORRECT - ConceptName]"
-                 * Give 1 clear sentence explaining why they were right or where their mental model failed.
-
-            4. RESPONSE STRUCTURE:
-               Structure every lesson clearly with these 3 sections:
-               - 📖 **The Concept (From Notes):** Clear, jargon-free breakdown of the topic from their syllabus.
-               - 🌍 **Real-World Scenario:** A vivid, everyday analogy showing this concept in action in real life.
-               - 🎯 **Scenario Challenge:** Ask ONE question putting the student inside a new real-life dilemma where they must apply the concept to answer.
-
-            Keep the tone warm, concise, engaging, and spoken-friendly.
+            IF PHASE IS "3. Quick Review / Q&A":
+            - Answer the student's specific question directly with a practical analogy.
             """
 
             raw_reply = ask_ai(combined_prompt, selected_model)
