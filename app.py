@@ -121,7 +121,7 @@ subjects = get_subjects()
 selected_subject = st.sidebar.selectbox("Select Subject", subjects)
 
 study_phase = st.sidebar.radio(
-    "🎯 Current Study Phase",
+    " Current Study Phase",
     ["1. Chapter Lecture (Full Overview)", "2. Comprehensive Chapter Exam", "3. Quick Review / Q&A"],
     index=0
 )
