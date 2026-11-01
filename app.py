@@ -120,6 +120,18 @@ if st.sidebar.button("Add Subject") and new_sub:
 subjects = get_subjects()
 selected_subject = st.sidebar.selectbox("Select Subject", subjects)
 
+# Ghanaian Language Selector
+language_mode = st.sidebar.selectbox(
+    "Tutor Language Style",
+    [
+        "English with Ghanaian Real-Life Context", 
+        "Twi (Asante / Akuapem) + English Mix",
+        "Ga + English Mix",
+        "Ewe + English Mix",
+        "Ghanaian Pidgin (Informal & Fun)"
+    ]
+)
+
 study_phase = st.sidebar.radio(
     " Current Study Phase",
     ["1. Chapter Lecture (Full Overview)", "2. Comprehensive Chapter Exam", "3. Quick Review / Q&A"],
@@ -205,32 +217,36 @@ if user_input:
     else:
         with st.spinner("Tutor is thinking..."):
             combined_prompt = f"""
-            You are a master personal tutor for {selected_subject}.
-            STUDY NOTES:
-            {notes_content[:15000]}
+            You are a brilliant, friendly Ghanaian academic tutor teaching: {selected_subject}.
+            
+            STUDY NOTES (GROUND TRUTH):
+            {notes_content[:12000]}
 
             STUDENT INPUT: "{user_input}"
-            CURRENT PHASE: {study_phase}
-            WEAK SPOTS: {memory['weak_topics']}
+            LANGUAGE STYLE REQUESTED: {language_mode}
 
-            ===========================
-            BEHAVIOR RULES FOR CURRENT PHASE:
-            ===========================
+            ===================================
+            GHANAIAN TEACHING & SCENARIO RULES:
+            ===================================
+            1. LANGUAGE ADAPTATION:
+               - If language is "Twi + English Mix": Explain core ideas by blending Asante Twi and English naturally (like a brilliant senior student in Legon or KNUST explaining to a friend). Use expressions like "Ɛne sɛ...", "Yɛbɛtumi ahu sɛ...", "Fa no sɛ...".
+               - If language is "Ghanaian Pidgin": Explain it smoothly in authentic Ghanaian Pidgin ("Make you take am say...", "E be like say...").
+               - If language is "Ga" or "Ewe": Use relevant native greetings, phrases, and vocabulary to explain the principles.
+               - If language is "English with Ghanaian Real-Life Context": Speak clear English, but root ALL analogies in Ghana.
 
-            IF PHASE IS "1. Chapter Lecture (Full Overview)":
-            - DO NOT ask quiz questions.
-            - Extract the 3 to 4 core Learning Outcomes from the chapter notes.
-            - Teach the full chapter cohesively from start to finish.
-            - Explain every major theory using a vivid, everyday REAL-LIFE SCENARIO (cooking, cars, tech, sports, business).
-            - End your response with: "We have covered all outcomes for this chapter! When you are ready to test your knowledge, switch the sidebar to '2. Comprehensive Chapter Exam'."
+            2. AUTHENTIC GHANAIAN SCENARIOS (MANDATORY):
+               - NEVER use abstract Western analogies like baseball or snow.
+               - ALWAYS use everyday Ghanaian life experiences:
+                 * Trotro drivers, conductors (mates), and traffic at Spanner / Kasoa / Circle.
+                 * Buying Waakye or Jollof, calculating change, and the queue dynamics at a busy chop bar.
+                 * Mobile Money (MoMo) transactions, agent limits, and network downtime.
+                 * Dumsor (load shedding) and generators/inverters for physics, economics, or engineering concepts.
+                 * Kejetia / Makola market bargaining and supply/demand.
 
-            IF PHASE IS "2. Comprehensive Chapter Exam":
-            - Review the chapter's learning outcomes and generate a 3-question Scenario Exam.
-            - Do not ask definition questions. Put the student inside realistic dilemmas where they must apply the concepts.
-            - If the student just submitted answers, evaluate each one, mark concepts as Mastered or Weak, and explain any errors simply.
-
-            IF PHASE IS "3. Quick Review / Q&A":
-            - Answer the student's specific question directly with a practical analogy.
+            3. PEDAGOGY:
+               - Break down the lecture note concepts clearly.
+               - Tie the concept directly to the Ghanaian scenario so the student never forgets.
+               - End with ONE realistic challenge question set right in Ghana.
             """
 
             raw_reply = ask_ai(combined_prompt, selected_model)
