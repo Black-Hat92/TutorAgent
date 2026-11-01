@@ -30,7 +30,7 @@ def get_subjects():
         dirs = ["General_Study"]
     return dirs
 
-@st.cache_data(show_spinner="📖 Loading notes into memory...")
+@st.cache_data(show_spinner="Loading notes into memory...")
 def load_subject_notes(subject):
     """Caches the text so it loads instantly without freezing."""
     folder = BASE_NOTES_DIR if subject == "Main Notes" else os.path.join(BASE_NOTES_DIR, subject)
@@ -103,14 +103,14 @@ def text_to_speech(text):
         return None
 
 # 4. SIDEBAR DASHBOARD
-st.sidebar.title("📚 Study Dashboard")
+st.sidebar.title("Study Dashboard")
 
 # Model Selector (Filters out restricted models)
 available_models = get_clean_models()
-selected_model = st.sidebar.selectbox("🤖 Choose AI Model", available_models)
+selected_model = st.sidebar.selectbox("Choose AI Model", available_models)
 
 # Add New Subject Field directly in UI
-new_sub = st.sidebar.text_input("➕ Create New Subject")
+new_sub = st.sidebar.text_input("Create New Subject")
 if st.sidebar.button("Add Subject") and new_sub:
     os.makedirs(os.path.join(BASE_NOTES_DIR, new_sub.strip().replace(" ", "_")), exist_ok=True)
     st.sidebar.success(f"Created {new_sub}!")
@@ -133,7 +133,7 @@ notes_len = len(notes_content)
 if notes_len == 0:
     st.sidebar.warning("⚠️ No materials found in this folder!")
 else:
-    st.sidebar.success(f"📖 Loaded {notes_len:,} characters of notes.")
+    st.sidebar.success(f"Loaded {notes_len:,} characters of notes.")
 
 # Upload File Directly via Web UI
 st.sidebar.subheader("Upload Material")
@@ -148,7 +148,7 @@ if uploaded_file is not None:
 # Voice Toggle
 enable_voice = st.sidebar.checkbox("🔊 Read answers out loud", value=False)
 # Clear Chat Button
-if st.sidebar.button("🗑️ Clear Chat / New Session", use_container_width=True):
+if st.sidebar.button("Clear Chat / New Session", use_container_width=True):
     st.session_state.messages = [
         {"role": "assistant", "content": f"Session cleared! What would you like to study next in **{selected_subject}**?"}
     ]
@@ -157,7 +157,7 @@ if st.sidebar.button("🗑️ Clear Chat / New Session", use_container_width=Tru
 # Memory & Progress Tracking
 memory = load_memory(selected_subject)
 st.sidebar.divider()
-st.sidebar.subheader("📈 Mastery Progress")
+st.sidebar.subheader("Mastery Progress")
 col1, col2 = st.sidebar.columns(2)
 col1.metric("Mastered", len(memory["mastered_topics"]))
 col2.metric("Weak Spots", len(memory["weak_topics"]))
@@ -198,7 +198,7 @@ if user_input:
         st.markdown(user_input)
 
     if not notes_content.strip():
-        bot_response = "⚠️ No notes found in this subject folder yet! Please upload a PDF in the sidebar."
+        bot_response = "No notes found in this subject folder yet! Please upload a PDF in the sidebar."
         with st.chat_message("assistant"):
             st.markdown(bot_response)
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
