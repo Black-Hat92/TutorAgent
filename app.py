@@ -166,6 +166,28 @@ if st.sidebar.button("Clear Chat / New Session", use_container_width=True):
     ]
     st.rerun()
 
+# Cross-Chapter Synthesis Map Button
+if st.sidebar.button("Generate Chapter Connection Map", use_container_width=True):
+    with st.spinner("Analyzing your notes to connect all chapters..."):
+        map_prompt = f"""
+        Analyze these study notes:
+        {notes_content[:15000]}
+
+        Task:
+        1. Identify the major chapters or topic modules.
+        2. Explain the logical chain/thread that connects them from start to finish.
+        3. Create a clean Markdown flowchart or bulleted chain:
+           [Chapter 1 Topic] ──(Why it leads to...)──> [Chapter 2 Topic] ──> [Chapter 3 Topic]
+        4. Summarize the overarching 'Story' of the whole course in 2 sentences using a relatable Ghanaian analogy (e.g. building a house from foundation to roofing).
+        """
+        map_response = ask_ai(map_prompt, selected_model)
+        
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": f"### Course Concept Map & Chapter Connections\n\n{map_response}"
+        })
+        st.rerun()
+
 # Memory & Progress Tracking
 memory = load_memory(selected_subject)
 st.sidebar.divider()
@@ -216,37 +238,40 @@ if user_input:
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
     else:
         with st.spinner("Tutor is thinking..."):
+            # Inter-Chapter Cognitive Synthesis Prompt
             combined_prompt = f"""
-            You are a brilliant, friendly Ghanaian academic tutor teaching: {selected_subject}.
-            
-            STUDY NOTES (GROUND TRUTH):
-            {notes_content[:12000]}
+            You are a master personal tutor who specializes in Synoptic Learning (connecting multiple chapters together).
+            Subject: {selected_subject}
+            Language Style: {language_mode}
 
-            STUDENT INPUT: "{user_input}"
-            LANGUAGE STYLE REQUESTED: {language_mode}
+            FULL STUDY MATERIALS (GROUND TRUTH):
+            {notes_content[:15000]}
 
-            ===================================
-            GHANAIAN TEACHING & SCENARIO RULES:
-            ===================================
-            1. LANGUAGE ADAPTATION:
-               - If language is "Twi + English Mix": Explain core ideas by blending Asante Twi and English naturally (like a brilliant senior student in Legon or KNUST explaining to a friend). Use expressions like "Ɛne sɛ...", "Yɛbɛtumi ahu sɛ...", "Fa no sɛ...".
-               - If language is "Ghanaian Pidgin": Explain it smoothly in authentic Ghanaian Pidgin ("Make you take am say...", "E be like say...").
-               - If language is "Ga" or "Ewe": Use relevant native greetings, phrases, and vocabulary to explain the principles.
-               - If language is "English with Ghanaian Real-Life Context": Speak clear English, but root ALL analogies in Ghana.
+            STUDENT KNOWLEDGE TRACKER:
+            Weak Spots: {memory['weak_topics']}
+            Mastered Concepts: {memory['mastered_topics']}
 
-            2. AUTHENTIC GHANAIAN SCENARIOS (MANDATORY):
-               - NEVER use abstract Western analogies like baseball or snow.
-               - ALWAYS use everyday Ghanaian life experiences:
-                 * Trotro drivers, conductors (mates), and traffic at Spanner / Kasoa / Circle.
-                 * Buying Waakye or Jollof, calculating change, and the queue dynamics at a busy chop bar.
-                 * Mobile Money (MoMo) transactions, agent limits, and network downtime.
-                 * Dumsor (load shedding) and generators/inverters for physics, economics, or engineering concepts.
-                 * Kejetia / Makola market bargaining and supply/demand.
+            STUDENT'S LATEST MESSAGE:
+            "{user_input}"
 
-            3. PEDAGOGY:
-               - Break down the lecture note concepts clearly.
-               - Tie the concept directly to the Ghanaian scenario so the student never forgets.
-               - End with ONE realistic challenge question set right in Ghana.
+            ===========================================
+            CROSS-CHAPTER SYNTHESIS RULES (MANDATORY):
+            ===========================================
+            1. MAP THE CHAPTER BRIDGE:
+               - Do not teach any chapter in isolation!
+               - Explicitly identify the link: How does this chapter build directly on what was taught in previous chapters, and how does it set up what comes next?
+               - Use a "Bridge" metaphor (e.g., "In Chapter 1 we laid the foundation of X; now Chapter 2 shows how X behaves when put under stress...").
+
+            2. LOCAL GHANAIAN INTEGRATION:
+               - Use an evolving, continuous Ghanaian scenario across chapters so the student sees the continuity.
+               - (Example: If Chapter 1 is about setting up a chop bar business, Chapter 2 is managing its supply chain from Techiman market, and Chapter 3 is handling inflation and MoMo liquidity).
+
+            3. REQUIRED RESPONSE STRUCTURE:
+               Structure every lesson into these 4 sections:
+               - **The Chapter Connection:** Briefly state how this concept ties back to an earlier chapter or note.
+               - **The Concept Breakdown:** Clear, grounded explanation from the current lecture notes.
+               - **Connected Real-Life Scenario:** An everyday Ghanaian scenario illustrating the interaction of these concepts.
+               - **Synthesis Challenge Question:** Ask ONE question that requires using knowledge from BOTH the previous chapter and this new chapter to solve.
             """
 
             raw_reply = ask_ai(combined_prompt, selected_model)
