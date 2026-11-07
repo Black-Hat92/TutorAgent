@@ -90,11 +90,29 @@ def ask_ai(prompt, model_name):
     )
     return chat_completion.choices[0].message.content.strip()
 
-def text_to_speech(text):
+import re
+
+def clean_text_for_speech(text):
+    """Strips markdown symbols, emojis, and punctuation that sound awkward when spoken."""
+    # 1. Remove markdown symbols like ***, **, *, #, _, ~, `, >, |, -
+    cleaned = re.sub(r'[*#_~`>|\-]', ' ', text)
+    
+    # 2. Remove emojis and special Unicode characters
+    cleaned = re.sub(r'[^\w\s.,?!]', ' ', cleaned)
+    
+    # 3. Remove result tags or system labels like [RESULT: CORRECT]
+    cleaned = re.sub(r'\[.*?\]', '', cleaned)
+    
+    # 4. Collapse multiple spaces and multiple newlines
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+
+def text_to_speech(text, language_mode="English with Ghanaian Real-Life Context"):
     try:
-        clean_text = text.replace("*", "").replace("#", "")
-        # Change [:350] to [:2500] so it reads the full answer!
-        tts = gTTS(text=clean_text[:2500], lang='en', slow=False)
+        spoken_text = clean_text_for_speech(text)
+        
+        # Read the first 2500 characters cleanly
+        tts = gTTS(text=spoken_text[:2500], lang='en', slow=False)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         return fp.getvalue()
@@ -239,39 +257,47 @@ if user_input:
     else:
         with st.spinner("Tutor is thinking..."):
             # Inter-Chapter Cognitive Synthesis Prompt
+            # Deep Chapter Instruction with Synoptic Bridge
             combined_prompt = f"""
-            You are a master personal tutor who specializes in Synoptic Learning (connecting multiple chapters together).
-            Subject: {selected_subject}
-            Language Style: {language_mode}
+            You are a master personal tutor teaching {selected_subject}.
+            Language/Style: {language_mode}
 
-            FULL STUDY MATERIALS (GROUND TRUTH):
+            LECTURE NOTES (PRIMARY TRUTH):
             {notes_content[:15000]}
 
-            STUDENT KNOWLEDGE TRACKER:
+            STUDENT TRACKER:
+            Mastered: {memory['mastered_topics']}
             Weak Spots: {memory['weak_topics']}
-            Mastered Concepts: {memory['mastered_topics']}
 
-            STUDENT'S LATEST MESSAGE:
-            "{user_input}"
+            STUDENT SAYS: "{user_input}"
 
-            ===========================================
-            CROSS-CHAPTER SYNTHESIS RULES (MANDATORY):
-            ===========================================
-            1. MAP THE CHAPTER BRIDGE:
-               - Do not teach any chapter in isolation!
-               - Explicitly identify the link: How does this chapter build directly on what was taught in previous chapters, and how does it set up what comes next?
-               - Use a "Bridge" metaphor (e.g., "In Chapter 1 we laid the foundation of X; now Chapter 2 shows how X behaves when put under stress...").
+            =======================================
+            CORE TEACHING MANDATE (DO NOT RUSH):
+            =======================================
+            1. TEACH THOROUGHLY FIRST (80% FOCUS):
+               - Your primary job is to TEACH the material from the notes deeply and accurately.
+               - Explain the mechanisms, terms, rules, and steps completely so the student understands the full concept.
+               - Do not give surface-level summaries; give actual substance.
 
-            2. LOCAL GHANAIAN INTEGRATION:
-               - Use an evolving, continuous Ghanaian scenario across chapters so the student sees the continuity.
-               - (Example: If Chapter 1 is about setting up a chop bar business, Chapter 2 is managing its supply chain from Techiman market, and Chapter 3 is handling inflation and MoMo liquidity).
+            2. THE CHAPTER BRIDGE (20% FOCUS):
+               - After explaining the concept, show the natural link: How does this build upon previous foundations, and how does it set up what comes next?
 
-            3. REQUIRED RESPONSE STRUCTURE:
-               Structure every lesson into these 4 sections:
-               - **The Chapter Connection:** Briefly state how this concept ties back to an earlier chapter or note.
-               - **The Concept Breakdown:** Clear, grounded explanation from the current lecture notes.
-               - **Connected Real-Life Scenario:** An everyday Ghanaian scenario illustrating the interaction of these concepts.
-               - **Synthesis Challenge Question:** Ask ONE question that requires using knowledge from BOTH the previous chapter and this new chapter to solve.
+            3. REAL-WORLD GHANAIAN SCENARIO:
+               - Ground the concept in everyday Ghanaian life (MoMo, trotros, chop bar dynamics, light off/dumsor, Kejetia/Makola trade, local tech/business).
+               - The scenario must clarify *why* the theory works in reality.
+
+            4. STRUCTURE YOUR LESSON INTO THESE 4 CLEAN PARTS:
+               ### Detailed Concept Breakdown
+               (Deep, step-by-step teaching grounded in the lecture notes)
+
+               ### The Chapter Connection
+               (1 or 2 clear sentences showing how this ties back to previous chapters or foundations)
+
+               ### Real-Life Scenario
+               (A vivid Ghanaian example making the concept intuitive)
+
+               ### Quick Application Challenge
+               (ONE scenario-based question to verify comprehension before moving on)
             """
 
             raw_reply = ask_ai(combined_prompt, selected_model)
