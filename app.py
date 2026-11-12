@@ -208,11 +208,15 @@ col1, col2 = st.sidebar.columns(2)
 col1.metric("Mastered", len(memory["mastered_topics"]))
 col2.metric("Weak Spots", len(memory["weak_topics"]))
 
-# 6. MAIN CHAT INTERFACE
+# 6. MAIN WORKSPACE & CHAT
 st.title(f"🎓 AI Tutor: {selected_subject}")
-st.caption(f"Connected to `{selected_model}` | Style: `{language_mode}`")
+st.caption(f"Model: `{selected_model}` | Language: `{language_mode}`")
 
-# Session State Setup
+# Track active quiz questions in session state
+if "active_question" not in st.session_state:
+    st.session_state.active_question = None
+if "active_concept" not in st.session_state:
+    st.session_state.active_concept = None
 if "messages" not in st.session_state or st.session_state.get("last_subject") != selected_subject:
     st.session_state.last_subject = selected_subject
     st.session_state.messages = [
@@ -226,16 +230,77 @@ for msg in st.session_state.messages:
         if "audio" in msg and msg["audio"]:
             st.audio(msg["audio"], format="audio/mp3")
 
-# Chat Input Field
-user_input = st.chat_input("Type your response (or press Win + H to speak)...")
+# ==============================================================================
+# 🎯 DEDICATED QUIZ & GRADING WORKSPACE (Separate from Chat)
+# ==============================================================================
+if st.session_state.active_question:
+    st.divider()
+    with st.container():
+        st.markdown(f"### 🎯 Challenge Question:\n**{st.session_state.active_question}**")
+        
+        with st.form("quiz_answer_form"):
+            quiz_answer = st.text_area(
+                "Write your answer here (apply the concept using real scenarios):",
+                placeholder="Type your explanation or press Win + H to speak...",
+                key="quiz_input_box"
+            )
+            submit_quiz = st.form_submit_button("Submit Answer for Grading 📝", use_container_width=True)
+
+        if submit_quiz and quiz_answer.strip():
+            with st.spinner("Grading your answer against the lecture notes..."):
+                grading_prompt = f"""
+                You are an objective, encouraging academic evaluator for {selected_subject}.
+                Language style: {language_mode}
+
+                QUESTION ASKED:
+                "{st.session_state.active_question}"
+
+                CONCEPT TESTED:
+                "{st.session_state.active_concept}"
+
+                STUDENT'S ANSWER:
+                "{quiz_answer}"
+
+                Task:
+                1. Explicitly state whether the answer is:
+                   ✅ FULLY CORRECT
+                   ⚠️ PARTIALLY CORRECT
+                   ❌ INCORRECT
+                2. Explain WHY based strictly on the lecture notes principles.
+                3. If they missed something, give a quick, memorable Ghanaian scenario analogy to fix the mental model.
+                4. Conclude with 1 sentence telling them what to study next.
+                """
+                grade_feedback = ask_ai(grading_prompt, selected_model)
+                grade_audio = text_to_speech(grade_feedback) if enable_voice else None
+
+                # Update memory tracker
+                concept = st.session_state.active_concept or "Recent Concept"
+                if "FULLY CORRECT" in grade_feedback.upper():
+                    if concept not in memory["mastered_topics"]: memory["mastered_topics"].append(concept)
+                    if concept in memory["weak_topics"]: memory["weak_topics"].remove(concept)
+                elif "INCORRECT" in grade_feedback.upper():
+                    if concept not in memory["weak_topics"]: memory["weak_topics"].append(concept)
+                save_memory(selected_subject, memory)
+
+                # Append user answer and tutor grade to chat log
+                st.session_state.messages.append({"role": "user", "content": f"**My Answer to Challenge:**\n{quiz_answer}"})
+                st.session_state.messages.append({"role": "assistant", "content": f"### 📊 Evaluation Result\n\n{grade_feedback}", "audio": grade_audio})
+                
+                # Clear active question so student can proceed
+                st.session_state.active_question = None
+                st.session_state.active_concept = None
+                st.rerun()
+
+# ==============================================================================
+# 💬 INQUIRY & LESSON CHAT (For asking questions or requesting chapters)
+# ==============================================================================
+user_input = st.chat_input("Ask a question, request a chapter (e.g. 'Chapter 2')...")
 
 if user_input:
-    # Show user message
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Route specifically to the requested chapter
     relevant_notes = get_relevant_content(docs_dict, user_input)
 
     if not relevant_notes.strip():
@@ -245,7 +310,6 @@ if user_input:
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
     else:
         with st.spinner("Tutor is preparing the lesson..."):
-            # Deep Chapter Instruction + Synoptic Bridge Prompt
             combined_prompt = f"""
             You are a master academic tutor teaching {selected_subject}.
             Language/Style: {language_mode}
@@ -260,64 +324,50 @@ if user_input:
             STUDENT MESSAGE: "{user_input}"
 
             =======================================
-            CORE TEACHING MANDATE:
+            TEACHING RULES:
             =======================================
-            1. TEACH THOROUGHLY FIRST (80% FOCUS):
-               - Your primary job is to TEACH the material from the notes deeply and accurately.
-               - Explain the mechanisms, terms, definitions, and principles completely so the student understands the full concept.
-               - Do not give surface-level summaries; give actual substance from the slides.
+            1. TEACH THOROUGHLY:
+               - Explain the mechanisms, terms, and definitions completely from the notes.
+            2. REAL-WORLD GHANAIAN SCENARIO:
+               - Ground the concept in everyday Ghanaian life (MoMo, trotros, chop bar, dumsor, Makola trade).
+            3. CRUCIAL CHALLENGE TAG:
+               - At the very end of your response, write the challenge question using this EXACT format on its own line:
+               [CHALLENGE: Concept Name | Your scenario question here]
 
-            2. THE CHAPTER BRIDGE (20% FOCUS):
-               - After explaining the concept, show the natural link: How does this build upon previous foundations, and how does it set up what comes next?
+            Structure your reply cleanly:
+            ### 📖 Detailed Concept Breakdown
+            (Deep, step-by-step teaching)
 
-            3. REAL-WORLD GHANAIAN SCENARIO:
-               - Ground the concept in everyday Ghanaian life (e.g., MoMo transactions, trotro transport, chop bar operations, dumsor management, Makola/Kejetia commerce, local enterprise IT).
+            ### 🔗 The Chapter Connection
+            (How this links to earlier foundations)
 
-            4. STRUCTURE YOUR LESSON INTO THESE 4 CLEAN PARTS:
-               ### Detailed Concept Breakdown
-               (Deep, step-by-step teaching grounded in the lecture notes)
+            ### 🇬🇭 Real-Life Scenario
+            (Intuitive Ghanaian example)
 
-               ### The Chapter Connection
-               (1 or 2 clear sentences showing how this ties back to previous chapters or foundations)
-
-               ### Real-Life Scenario
-               (A vivid Ghanaian example making the concept intuitive)
-
-               ### Quick Application Challenge
-               (ONE scenario-based question to verify comprehension before moving on)
+            [CHALLENGE: Concept Name | Your scenario question here]
             """
 
             raw_reply = ask_ai(combined_prompt, selected_model)
 
-            # Auto-update memory from the response tag if present
-            if "[RESULT:" in raw_reply:
+            # Extract challenge question to populate dedicated quiz box
+            if "[CHALLENGE:" in raw_reply:
                 try:
-                    tag_line = raw_reply.split("]")[0].replace("[RESULT:", "").strip()
-                    status, concept = [x.strip() for x in tag_line.split("-", 1)]
-                    if "CORRECT" in status:
-                        if concept not in memory["mastered_topics"]: memory["mastered_topics"].append(concept)
-                        if concept in memory["weak_topics"]: memory["weak_topics"].remove(concept)
-                    else:
-                        if concept not in memory["weak_topics"]: memory["weak_topics"].append(concept)
-                    save_memory(selected_subject, memory)
+                    challenge_part = raw_reply.split("[CHALLENGE:")[1].split("]")[0]
+                    c_name, c_q = [x.strip() for x in challenge_part.split("|", 1)]
+                    st.session_state.active_concept = c_name
+                    st.session_state.active_question = c_q
+                    # Clean out the tag so chat looks pristine
+                    clean_reply = raw_reply.split("[CHALLENGE:")[0].strip()
                 except Exception:
-                    pass
-                bot_response = raw_reply.split("]", 1)[-1].strip()
+                    clean_reply = raw_reply
             else:
-                bot_response = raw_reply
+                clean_reply = raw_reply
 
-            # Audio generation (Clean speech without dashes/pipes)
-            audio_fp = text_to_speech(bot_response) if enable_voice else None
+            audio_fp = text_to_speech(clean_reply) if enable_voice else None
 
-            # Display response
-            with st.chat_message("assistant"):
-                st.markdown(bot_response)
-                if audio_fp:
-                    st.audio(audio_fp, format="audio/mp3", autoplay=True)
-
-            # Append to session history
             st.session_state.messages.append({
                 "role": "assistant", 
-                "content": bot_response,
+                "content": clean_reply,
                 "audio": audio_fp
             })
+            st.rerun()
