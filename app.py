@@ -7,6 +7,7 @@ import streamlit as st
 from groq import Groq
 from pypdf import PdfReader
 from gtts import gTTS
+from elevenlabs.client import ElevenLabs
 
 # 1. SETUP PAGE CONFIG & MUTE WARNINGS
 st.set_page_config(page_title="AI Tutor Agent", page_icon="🎓", layout="wide")
@@ -15,6 +16,9 @@ logging.getLogger("pypdf").setLevel(logging.ERROR)
 # 2. INITIALIZE GROQ CLIENT
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
 client = Groq(api_key=GROQ_API_KEY)
+
+ELEVENLABS_API_KEY = st.secrets.get("ELEVENLABS_API_KEY", os.environ.get("ELEVENLABS_API_KEY", ""))
+eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
 
 # 3. DIRECTORY & SMART LOADER
 BASE_NOTES_DIR = "notes"
@@ -172,14 +176,44 @@ def clean_html_tags(text):
     return text.strip()
 
 def text_to_speech(text):
+    """
+    Ultra-realistic, expressive voice with human pauses, inflection, 
+    and punctuation respect using ElevenLabs.
+    """
+    # Clean HTML or result tags, but KEEP punctuation (. , ? !)
+    clean_text = clean_html_tags(text)
+    clean_text = re.sub(r'\[.*?\]', '', clean_text)
+    clean_text = re.sub(r'[*#_~`>|\-]', ' ', clean_text)
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+
+    # Limit to ~400 characters per response to conserve free tier quota
+    spoken_text = clean_text[:450]
+
+    # 1. Try ElevenLabs First
+    if eleven_client and ELEVENLABS_API_KEY:
+        try:
+            # Voice IDs you can pick:
+            # '21m00Tcm4TlvDq8ikWAM' -> Rachel (Calm & Clear Tutor)
+            # 'pNInz6obpgDQGcFmaJgB' -> Adam (Natural & Deep)
+            audio_generator = eleven_client.text_to_speech.convert(
+                voice_id="21m00Tcm4TlvDq8ikWAM",  # Rachel
+                text=spoken_text,
+                model_id="eleven_multilingual_v2"
+            )
+            # Collect audio chunks into raw bytes
+            audio_bytes = b"".join(audio_generator)
+            return audio_bytes
+        except Exception as e:
+            print(f"ElevenLabs error (falling back to standard): {e}")
+
+    # 2. Fallback to gTTS if ElevenLabs key is missing or quota runs out
     try:
-        spoken_text = clean_text_for_speech(text)
-        tts = gTTS(text=spoken_text[:3500], lang='en', slow=False)
+        tts = gTTS(text=spoken_text, lang='en', slow=False)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         return fp.getvalue()
     except Exception as e:
-        print(f"Audio Error: {e}")
+        print(f"Fallback TTS failed: {e}")
         return None
 
 # 5. SIDEBAR CONTROLS
