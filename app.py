@@ -60,39 +60,53 @@ def load_all_course_files(subject):
                 docs[file] = text
     return docs
 
+import re
+
 def get_relevant_content(docs_dict, user_message):
     """
-    Intelligently routes to the exact chapter file requested.
-    Never lets a large textbook push out specific chapter slides.
+    Dynamically finds ANY chapter (1, 2, 3... 9, 10, etc.) in the user's message 
+    and matches it directly to the corresponding PDF file!
     """
     targeted_content = ""
     msg = user_message.lower()
 
-    # 1. Match specific chapter requests
-    for filename, content in docs_dict.items():
-        clean_name = filename.lower().replace("_", " ").replace("-", " ")
-        if any(term in msg for term in ["chapter 1", "ch 1", "intro"]) and "chapter 1" in clean_name:
-            targeted_content += f"\n=== {filename} ===\n" + content[:12000]
-        elif any(term in msg for term in ["chapter 2", "ch 2", "key concept"]) and "chapter 2" in clean_name:
-            targeted_content += f"\n=== {filename} ===\n" + content[:12000]
-        elif any(term in msg for term in ["chapter 3", "ch 3", "dimension"]) and "chapter 3" in clean_name:
-            targeted_content += f"\n=== {filename} ===\n" + content[:12000]
-        elif any(term in msg for term in ["chapter 5", "ch 5", "practice", "management"]) and "chapter 5" in clean_name:
-            targeted_content += f"\n=== {filename} ===\n" + content[:12000]
+    # 1. Dynamically extract the chapter number requested (e.g., 'chapter 9', 'ch 9', 'chapter9')
+    match = re.search(r'\b(?:chapter|ch)\s*(\d+)\b', msg)
+    
+    if match:
+        requested_num = match.group(1)  # e.g., "9"
+        
+        # Search all loaded files for this exact chapter number
+        for filename, content in docs_dict.items():
+            fname_clean = filename.lower().replace("_", " ").replace("-", " ")
+            
+            # Checks for "chapter 9", "ch 9", or "chapter 09"
+            if re.search(rf'\b(?:chapter|ch)\s*0*{requested_num}\b', fname_clean):
+                targeted_content += f"\n=== ACTIVE MATERIAL: {filename} ===\n" + content[:14000]
 
-    # 2. If no specific chapter matched, include excerpts from all slide decks first
+    # 2. If user mentioned a topic keyword (like "internal control", "risk", "governance")
+    if not targeted_content:
+        for filename, content in docs_dict.items():
+            fname_clean = filename.lower()
+            # If any word from the filename matches what the user typed
+            for word in msg.split():
+                if len(word) > 3 and word in fname_clean and "chapter" in fname_clean:
+                    targeted_content += f"\n=== TOPIC MATCH: {filename} ===\n" + content[:8000]
+                    break
+
+    # 3. Fallback: If still nothing targeted, pull high-yield summaries from all slides
     if not targeted_content:
         for filename, content in docs_dict.items():
             if "chapter" in filename.lower():
-                targeted_content += f"\n=== SLIDES: {filename} ===\n" + content[:5000]
+                targeted_content += f"\n=== SLIDE EXCERPT: {filename} ===\n" + content[:3000]
 
-    # 3. Supplement with textbook context
+    # 4. Supplement with small excerpts from the main textbooks (Hall / Otero)
     for filename, content in docs_dict.items():
-        if "axelos" in filename.lower() or "edition" in filename.lower():
-            targeted_content += f"\n=== TEXTBOOK: {filename} ===\n" + content[4000:12000]
+        if any(book in filename.lower() for book in ["hall", "otero", "axelos"]):
+            targeted_content += f"\n=== TEXTBOOK REFERENCE: {filename} ===\n" + content[4000:10000]
             break
 
-    return targeted_content[:20000]
+    return targeted_content[:22000]
 
 def get_memory_file(subject):
     return f"memory_{subject.lower().replace(' ', '_')}.json"
