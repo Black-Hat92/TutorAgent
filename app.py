@@ -150,12 +150,57 @@ def ask_ai(prompt, model_name):
 
 # 4. CLEAN AUDIO ENGINE (No dashes, pipes, or asterisks)
 def clean_text_for_speech(text):
-    """Removes all Markdown symbols, emojis, and tags so TTS sounds human."""
-    cleaned = re.sub(r'[*#_~`>|\-]', ' ', text)
-    cleaned = re.sub(r'[^\w\s.,?!]', ' ', cleaned)
-    cleaned = re.sub(r'\[.*?\]', '', cleaned)
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
-    return cleaned
+    """
+    Prepares text for natural human speech:
+    - Adds pauses to headings and titles.
+    - Adds natural pauses/commas between table columns and rows.
+    - Strips markdown noise while preserving speech rhythm.
+    """
+    if not text:
+        return ""
+
+    # 1. Clean HTML first
+    text = clean_html_tags(text)
+    
+    # 2. Handle Tables: Turn pipes '|' into commas for table cells
+    # Convert "| Era | Dominant Approach | What Changed |" -> "Era, Dominant Approach, What Changed."
+    lines = text.split("\n")
+    processed_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+            
+        # If it's a markdown table separator line (e.g. |---|---|), skip it entirely
+        if re.match(r'^\|?[\s\-:|]+\|?$', stripped):
+            continue
+            
+        # If it's a table row with pipes '|'
+        if "|" in stripped:
+            cells = [c.strip() for c in stripped.split("|") if c.strip()]
+            # Join cells with a comma and pause, end the row with a full stop
+            line_speech = ", ".join(cells) + "."
+            processed_lines.append(line_speech)
+        else:
+            # If it's a heading or normal line without punctuation at the end, add a full stop!
+            if not stripped.endswith(('.', '!', '?', ':', ';')):
+                stripped += "."
+            processed_lines.append(stripped)
+
+    # Rejoin lines with natural spacing
+    full_speech = " ".join(processed_lines)
+
+    # 3. Strip special symbols, bullets, hashes, bold markers
+    full_speech = re.sub(r'[*#_~`>]', ' ', full_speech)
+    full_speech = re.sub(r'\[.*?\]', '', full_speech)  # Remove tags like [CHALLENGE: ...]
+    
+    # 4. Clean up redundant punctuation (e.g., '..', ',.')
+    full_speech = re.sub(r'\s*,\s*\.', '.', full_speech)
+    full_speech = re.sub(r'\.{2,}', '.', full_speech)
+    full_speech = re.sub(r'\s+', ' ', full_speech).strip()
+
+    return full_speech
 
 def clean_html_tags(text):
     """Converts HTML markup into clean markdown and strips residual tags."""
@@ -187,7 +232,7 @@ def text_to_speech(text):
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
     # Limit to ~400 characters per response to conserve free tier quota
-    spoken_text = clean_text[:5400]
+    spoken_text = clean_text[:5500]
 
     # 1. Try ElevenLabs First
     if eleven_client and ELEVENLABS_API_KEY:
