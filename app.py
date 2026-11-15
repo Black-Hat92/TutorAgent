@@ -187,7 +187,7 @@ def text_to_speech(text):
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
     # Limit to ~400 characters per response to conserve free tier quota
-    spoken_text = clean_text[:450]
+    spoken_text = clean_text[:5400]
 
     # 1. Try ElevenLabs First
     if eleven_client and ELEVENLABS_API_KEY:
@@ -405,7 +405,7 @@ if user_input:
                [CHALLENGE: Concept Name | Your scenario question here]
 
             Structure your reply cleanly:
-            ### 📖 Detailed Concept Breakdown
+            ### Detailed Concept Breakdown
             (Deep, step-by-step teaching)
 
             ### 🔗 The Chapter Connection
