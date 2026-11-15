@@ -139,6 +139,24 @@ def clean_text_for_speech(text):
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
+def clean_html_tags(text):
+    """Converts HTML markup into clean markdown and strips residual tags."""
+    if not text:
+        return ""
+    # Convert breaks to real linebreaks
+    text = re.sub(r'<\s*br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    # Convert list items to clean markdown bullets
+    text = re.sub(r'<\s*li\s*>', '\n* ', text, flags=re.IGNORECASE)
+    # Remove closing tags and other common tags
+    text = re.sub(r'</\s*(li|ul|ol|p|div)\s*>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'<\s*b\s*>', '**', text, flags=re.IGNORECASE)
+    text = re.sub(r'</\s*b\s*>', '**', text, flags=re.IGNORECASE)
+    # Strip any remaining lingering HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Normalize multiple linebreaks
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
 def text_to_speech(text):
     try:
         spoken_text = clean_text_for_speech(text)
@@ -269,8 +287,12 @@ if st.session_state.active_question:
                 2. Explain WHY based strictly on the lecture notes principles.
                 3. If they missed something, give a quick, memorable Ghanaian scenario analogy to fix the mental model.
                 4. Conclude with 1 sentence telling them what to study next.
+
+                FORMATTING RULE:
+                - Output in clean, pure standard Markdown ONLY.
+                - NEVER use HTML tags (NO <li>, <br>, <b>, <ul>, <p>). Use standard Markdown asterisks and line breaks instead.
                 """
-                grade_feedback = ask_ai(grading_prompt, selected_model)
+                grade_feedback = clean_html_tags(ask_ai(grading_prompt, selected_model))
                 grade_audio = text_to_speech(grade_feedback) if enable_voice else None
 
                 # Update memory tracker
@@ -345,6 +367,10 @@ if user_input:
             (Intuitive Ghanaian example)
 
             [CHALLENGE: Concept Name | Your scenario question here]
+
+            FORMATTING RULE:
+            - Output in clean, pure standard Markdown ONLY.
+            - NEVER use HTML tags (NO <li>, <br>, <b>, <ul>, <p>). Use standard Markdown asterisks and line breaks instead.
             """
 
             raw_reply = ask_ai(combined_prompt, selected_model)
@@ -357,7 +383,7 @@ if user_input:
                     st.session_state.active_concept = c_name
                     st.session_state.active_question = c_q
                     # Clean out the tag so chat looks pristine
-                    clean_reply = raw_reply.split("[CHALLENGE:")[0].strip()
+                    clean_reply = clean_html_tags(raw_reply.split("[CHALLENGE:")[0].strip())
                 except Exception:
                     clean_reply = raw_reply
             else:
